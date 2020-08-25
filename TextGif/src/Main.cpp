@@ -239,7 +239,7 @@ int main()
 
 	std::shared_ptr<AVCodecContext> codecContext{ nullptr, avcodec_close };
 
-	std::shared_ptr<AVFrame> frame{ nullptr, [](AVFrame* f) {av_frame_free(&f); } };
+	
 
 	std::shared_ptr<AVPacket> packet{ nullptr, [](AVPacket* p) { av_packet_free(&p); } };
 
@@ -247,11 +247,14 @@ int main()
 	std::string outfilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\frame.yuv";
 
 	int status;
-	int VideoStreamIndex = -1;
 
-	GifMaker a{"C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text.gif", 1280, 640 };
 
-	av_register_all();
+	fmt_ctx = avformat_alloc_context();
+
+	if (!fmt_ctx) {
+		throw std::exception("Couldn't created AVFormatContext");
+		return 0;
+	}
 
 	if (status = avformat_open_input(&fmt_ctx, infilename.c_str(), NULL, NULL) < 0)
 	{
@@ -271,6 +274,8 @@ int main()
 		return 0;
 	}
 
+
+	int VideoStreamIndex = -1;
 	for (int i = 0; i < formatContext->nb_streams; i++){
 
 		if (formatContext->streams[i]->codecpar->codec_type == AVMEDIA_TYPE_VIDEO){
@@ -284,9 +289,10 @@ int main()
 		return 0;
 	}
 
+	//print detailed info for format
 	av_dump_format(formatContext.get(), VideoStreamIndex, infilename.c_str(), false);
 
-	codecContext.reset(avcodec_alloc_context3(NULL));
+	codecContext.reset(avcodec_alloc_context3(Codec));
 
 	if (status = avcodec_parameters_to_context(codecContext.get(), formatContext->streams[VideoStreamIndex]->codecpar) < 0){
 		av_log(NULL, AV_LOG_ERROR, "Cannot get codec parameters\n");
@@ -295,11 +301,18 @@ int main()
 
 	Codec = avcodec_find_decoder(codecContext->codec_id);
 
-	if (Codec == NULL){
+	if (!Codec){
 		av_log(NULL, AV_LOG_ERROR, "No decoder found\n");
 		return 0;
 	}
 
+	/**
+	*
+	* not needed if avcodec_alloc_context3() has non-Null argument
+	* but in this case codec initialise with codecContext data, so it should initialie after codec 
+	* avcodec_open2() should have the same codec as pased to avcodec_alloc_context3()
+	* if skip this thismay couse problems with avcodec_send_packet()
+	*/
 	if (status = avcodec_open2(codecContext.get(), Codec, NULL) < 0){
 		av_log(NULL, AV_LOG_ERROR, "Cannot open video decoder\n");
 		return 0;
@@ -316,19 +329,19 @@ int main()
 		return 0;
 	}
 
-	frame.reset(av_frame_alloc());
+	std::shared_ptr<AVFrame> frame{ av_frame_alloc(), [](AVFrame* f) {av_frame_free(&f); } };
 
 	if (!frame){
 		av_log(NULL, AV_LOG_ERROR, "Cannot init frame\n");
 	}
 
 
-	std::ifstream inFile { infilename , std::ios_base::binary | std::ios_base::in };
+	//std::ifstream inFile { infilename , std::ios_base::binary | std::ios_base::in };
 
-	if (!inFile){
-		av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
-		return 0;
-	}
+	//if (!inFile){
+	//	av_log(NULL, AV_LOG_ERROR, "Cannot open input file\n");
+	//	return 0;
+	//}
 
 	std::ofstream outFile { outfilename , std::ios_base::binary | std::ios_base::out };
 
@@ -336,6 +349,11 @@ int main()
 		av_log(NULL, AV_LOG_ERROR, "Cannot open output file\n");
 		return 0;
 	}
+
+	
+
+	GifMaker a{ "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text.gif", codecContext->width, codecContext->height };
+
 
 	// main loop
 	while (true) {

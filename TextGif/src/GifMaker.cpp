@@ -110,6 +110,9 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
             printf("allocated picture of size %d (ptr %x), linesize %d %d %d %d\n", ret, picture->data[0], picture->linesize[0], picture->linesize[1], picture->linesize[2], picture->linesize[3]);
         }
 
+        picture->height = height;
+        picture->width = width;
+
         pictureYUV420P.reset(av_frame_alloc());
         pictureYUV420P->format = AV_PIX_FMT_RGB24;
 
@@ -118,6 +121,9 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
         }
         else
             printf("allocated picture of size %d (ptr %x), linesize %d %d %d %d\n", ret, pictureYUV420P->data[0], pictureYUV420P->linesize[0], pictureYUV420P->linesize[1], pictureYUV420P->linesize[2], pictureYUV420P->linesize[3]);
+
+        pictureYUV420P->height = height;
+        pictureYUV420P->width = width;
 
         size = ret;
     }
@@ -128,7 +134,6 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
     if (!(outputFormat->flags & AVFMT_NOFILE)) {
         int ret;
         if ((ret = avio_open(&outFormatContext->pb, filename.c_str(), AVIO_FLAG_WRITE)) < 0) {
-            //fprintf(stderr, "Could not open '%s': %s\n", filename.c_str(), av_err2str(ret));
             throw std::exception("Could not open file");
         }
     }
@@ -151,11 +156,15 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
 void GifMaker::AddFrame(std::shared_ptr<AVFrame> frame){
     /* copy the buffer */
     memcpy(pictureYUV420P->data[0], frame->data[0], size);
-    picture->height = frame->height;
-    picture->width = frame->width;
+    
 
     /* convert RGB24 to YUV420 */
-    sws_scale(swsContext, pictureYUV420P->data, pictureYUV420P->linesize, 0, outCodecContext->height, picture->data, picture->linesize);
+    auto t = sws_scale(swsContext,
+        pictureYUV420P->data,
+        pictureYUV420P->linesize,
+        0, outCodecContext->height,
+        picture->data,
+        picture->linesize);
 
     int ret = -1;
     //if (outFormatContext->oformat->flags & AVFMT_RAWPICTURE) {
