@@ -243,7 +243,7 @@ int main()
 
 	std::shared_ptr<AVPacket> packet{ nullptr, [](AVPacket* p) { av_packet_free(&p); } };
 
-	std::string infilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\video.mp4";
+	std::string infilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\IMG_0010.MOV";
 	std::string outfilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\frame.yuv";
 
 	int status;

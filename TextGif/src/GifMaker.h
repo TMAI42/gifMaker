@@ -9,6 +9,14 @@ extern "C" {
 #include <memory>
 #include <string>
 
+struct FrameDeleter
+{
+    void operator()(AVFrame* frame) {
+        if (frame)
+            av_frame_free(&frame);
+    }
+};
+
 class GifMaker{
 public:
 
@@ -19,16 +27,25 @@ public:
     void CloseWriteing();
 
     ~GifMaker() = default;
+private:
+    int InitFrames(int width, int height, AVPixelFormat inputPixelFormat);
+    void InitPixelConvertionContext();
 
 private:
     AVCodec* codec;
     int size, frameCount;
-    std::shared_ptr<AVFrame> pictureYUV420P;
-    SwsContext* swsContext;
+
+    std::unique_ptr<AVFrame, FrameDeleter> pictureInput;
+    std::unique_ptr<AVFrame, FrameDeleter> pictureRGB24;
+
+    SwsContext* swsContextToRGB24;
+    SwsContext* swsContextToRGB8;
+
     AVOutputFormat* outputFormat;
     AVFormatContext* outFormatContext;
     AVStream* videoStream;
     AVCodecContext* outCodecContext;
 
 };
+
 
