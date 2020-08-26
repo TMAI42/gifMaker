@@ -12,16 +12,17 @@ extern "C" {
 class GifMaker{
 public:
 
-    GifMaker(std::string filename, int width, int height, int bitrate = 400000, int framerate = 25);
+    GifMaker(std::string filename, int width, int height, AVPixelFormat inputPixelFormat, int bitrate = 400000, int framerate = 25 );
 
     void AddFrame(std::shared_ptr<AVFrame> frame);
 
     void CloseWriteing();
 
+    ~GifMaker() = default;
+
 private:
     AVCodec* codec;
     int size, frameCount;
-    std::shared_ptr<AVFrame> picture;
     std::shared_ptr<AVFrame> pictureYUV420P;
     SwsContext* swsContext;
     AVOutputFormat* outputFormat;

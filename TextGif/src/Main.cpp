@@ -243,7 +243,7 @@ int main()
 
 	std::shared_ptr<AVPacket> packet{ nullptr, [](AVPacket* p) { av_packet_free(&p); } };
 
-	std::string infilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\IMG_4122.MP4";
+	std::string infilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\video.mp4";
 	std::string outfilename = "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\frame.yuv";
 
 	int status;
@@ -352,7 +352,7 @@ int main()
 
 	
 
-	GifMaker a{ "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text.gif", codecContext->width, codecContext->height };
+	GifMaker a{ "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text.gif", codecContext->width, codecContext->height, codecContext->pix_fmt };
 
 
 	// main loop

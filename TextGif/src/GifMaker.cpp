@@ -8,7 +8,7 @@ extern "C" {
 }
 
 
-GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int framerate)
+GifMaker::GifMaker(std::string filename, int width, int height,  AVPixelFormat inputPixelFormat, int bitrate, int framerate)
 	:outFormatContext(NULL), codec(NULL), frameCount(1) {
 
     av_register_all();
@@ -93,28 +93,11 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
         if ((ret = avcodec_open2(outCodecContext, codec, &options)) < 0) {
             throw std::exception("could not open codec");
         }
-        //        } else
-        //            printf("raw video, no codec\n");
-
-                /* alloc image and output buffer */
-        picture.reset(av_frame_alloc());
-        picture->data[0] = nullptr;
-        picture->linesize[0] = -1;
-        picture->format = outCodecContext->pix_fmt;
-
-        ret = av_image_alloc(picture->data, picture->linesize, outCodecContext->width, outCodecContext->height, (AVPixelFormat)picture->format, 32);
-        if (ret < 0) {
-            throw std::exception("error allocating with frames");
-        }
-        else {
-            printf("allocated picture of size %d (ptr %x), linesize %d %d %d %d\n", ret, picture->data[0], picture->linesize[0], picture->linesize[1], picture->linesize[2], picture->linesize[3]);
-        }
-
-        picture->height = height;
-        picture->width = width;
+        
+       
 
         pictureYUV420P.reset(av_frame_alloc());
-        pictureYUV420P->format = AV_PIX_FMT_RGB24;
+        pictureYUV420P->format = inputPixelFormat;
 
         if ((ret = av_image_alloc(pictureYUV420P->data, pictureYUV420P->linesize, outCodecContext->width, outCodecContext->height, (AVPixelFormat)pictureYUV420P->format, 32)) < 0) {
             throw std::exception("can not allocate temp frame");
@@ -145,7 +128,7 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
 
     /* get sws context for YUV420->RGB24 conversion */
     swsContext = sws_getContext(outCodecContext->width, outCodecContext->height, (AVPixelFormat)pictureYUV420P->format,
-        outCodecContext->width, outCodecContext->height, (AVPixelFormat)picture->format,
+        outCodecContext->width, outCodecContext->height, AV_PIX_FMT_RGB8,
                              SWS_BICUBIC, NULL, NULL, NULL);
     if (!swsContext) {
         throw std::exception("Could not initialize the conversion context");
@@ -156,8 +139,27 @@ GifMaker::GifMaker(std::string filename, int width, int height, int bitrate, int
 void GifMaker::AddFrame(std::shared_ptr<AVFrame> frame){
     /* copy the buffer */
     memcpy(pictureYUV420P->data[0], frame->data[0], size);
-    
 
+    std::unique_ptr<AVFrame, void(*)(AVFrame*)> picture { av_frame_alloc(), [](AVFrame* f) {
+        if(f)
+            av_frame_free(&f); 
+    } };
+
+    picture->data[0] = nullptr;
+    picture->linesize[0] = -1;
+    picture->format = outCodecContext->pix_fmt;
+
+    if (av_image_alloc(picture->data, picture->linesize, outCodecContext->width, outCodecContext->height, (AVPixelFormat)picture->format, 32) < 0) {
+        throw std::exception("error allocating with frames");
+    }
+    else {
+        printf("allocated picture of size %d (ptr %x), linesize %d %d %d %d\n", 0, picture->data[0], picture->linesize[0], picture->linesize[1], picture->linesize[2], picture->linesize[3]);
+    }
+
+    picture->height =frame->height;
+    picture->width = frame->width;
+
+   //auto ff = av_image_alloc(picture->data, picture->linesize, outCodecContext->width, outCodecContext->height, (AVPixelFormat)picture->format, 32);
     /* convert RGB24 to YUV420 */
     auto t = sws_scale(swsContext,
         pictureYUV420P->data,
@@ -169,36 +171,38 @@ void GifMaker::AddFrame(std::shared_ptr<AVFrame> frame){
     int ret = -1;
     //if (outFormatContext->oformat->flags & AVFMT_RAWPICTURE) {
     //    /* Raw video case - directly store the picture in the packet */
-        AVPacket pkt;
+       /* AVPacket pkt;
         av_init_packet(&pkt);
         pkt.flags |= AV_PKT_FLAG_KEY;
         pkt.stream_index = videoStream->index;
         pkt.data = picture->data[0];
         pkt.size = sizeof(picture->data);
-        ret = av_interleaved_write_frame(outFormatContext, &pkt);
+        ret = av_interleaved_write_frame(outFormatContext, &pkt);*/
     //}
     //{
-        //AVPacket pkt = { 0 };
-        //int got_packet;
-        //av_init_packet(&pkt);
-        ///* encode the image */
+        AVPacket pkt = { 0 };
+        int got_packet;
+        av_init_packet(&pkt);
+        /* encode the image */
        
-        //ret = avcodec_encode_video2(outCodecContext, &pkt, picture.get(), &got_packet);
-        //if (ret < 0) {
-        //    throw std::exception("Error encoding video frame");
-        //}
-        ///* If size is zero, it means the image was buffered. */
-        //if (!ret && got_packet && pkt.size) {
-        //    pkt.stream_index = videoStream->index;
-        //    /* Write the compressed frame to the media file. */
-        //    ret = av_interleaved_write_frame(outFormatContext, &pkt);
-        //}
+        ret = avcodec_encode_video2(outCodecContext, &pkt, picture.get(), &got_packet);
+        if (ret < 0) {
+            throw std::exception("Error encoding video frame");
+        }
+        /* If size is zero, it means the image was buffered. */
+        if (!ret && got_packet && pkt.size) {
+            pkt.stream_index = videoStream->index;
+            /* Write the compressed frame to the media file. */
+            ret = av_interleaved_write_frame(outFormatContext, &pkt);
+        }
         //else {
         //    ret = 0;
         //}
     //}
     picture->pts += av_rescale_q(1, videoStream->codec->time_base, videoStream->time_base);
     frameCount++;
+
+    //av_frame_unref(picture.get());
 }
 
 void GifMaker::CloseWriteing(){
@@ -206,7 +210,6 @@ void GifMaker::CloseWriteing(){
     /* Close each codec. */
 
     avcodec_close(videoStream->codec);
-    av_freep(&(picture->data[0]));
 
     if (!(outputFormat->flags & AVFMT_NOFILE))
         /* Close the output file. */
