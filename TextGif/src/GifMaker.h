@@ -9,18 +9,13 @@ extern "C" {
 #include <memory>
 #include <string>
 
-struct FrameDeleter
-{
-    void operator()(AVFrame* frame) {
-        if (frame)
-            av_frame_free(&frame);
-    }
-};
+#include "Deleters.h"
 
 class GifMaker{
 public:
 
     GifMaker(std::string filename, int width, int height, AVPixelFormat inputPixelFormat, int bitrate = 400000, int framerate = 25 );
+    GifMaker(std::string filename, const AVCodecContext* codcecContext);
 
     void AddFrame(std::shared_ptr<AVFrame> frame);
 
@@ -36,9 +31,9 @@ private:
     int size, frameCount;
 
     std::unique_ptr<AVFrame, FrameDeleter> pictureInput;
-    std::unique_ptr<AVFrame, FrameDeleter> pictureRGB24;
+    std::unique_ptr<AVFrame, FrameDeleter> pictureYUV420P;
 
-    SwsContext* swsContextToRGB24;
+    SwsContext* swsContextToYUV420P;
     SwsContext* swsContextToRGB8;
 
     AVOutputFormat* outputFormat;
