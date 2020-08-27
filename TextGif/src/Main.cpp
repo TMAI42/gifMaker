@@ -220,14 +220,9 @@ extern "C" {
 
 
 int main() {
-	try {
-		ToGifConvertor a("C:\\Users\\Andrey Strelchenko\\Downloads\\IMG_6240.MP4", "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text12.gif");
+
+		ToGifConvertor a("C:\\Users\\Andrey Strelchenko\\Downloads\\IMG_6240.MP4", "C:\\Users\\Andrey Strelchenko\\Downloads\\pars\\text32.gif");
 
 		a.Convert();
-	}
-	catch (std::exception e) {
-		std::cout << e.what();
-	}
-
-
+	
 }

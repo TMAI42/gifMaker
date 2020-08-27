@@ -3,7 +3,7 @@
 #include <string>
 #include <memory>
 
-#include "VideoParcer.h"
+#include "VideoParser.h"
 #include "GifMaker.h"
 
 
@@ -16,7 +16,7 @@ public:
 
 	~ToGifConvertor() = default;
 private:
-	std::unique_ptr<VideoParcer> parcer;
+	std::unique_ptr<VideoParser> parser;
 	std::unique_ptr<GifMaker> builder;
 
 };

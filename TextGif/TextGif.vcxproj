@@ -156,14 +156,14 @@
     <ClCompile Include="src\RawWriter.cpp" />
     <ClCompile Include="src\GifMaker.cpp" />
     <ClCompile Include="src\Main.cpp" />
-    <ClCompile Include="src\VideoParcer.cpp" />
+    <ClCompile Include="src\VideoParser.cpp" />
     <ClCompile Include="src\ToGifConvertor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Deleters.h" />
     <ClInclude Include="src\RawWriter.h" />
     <ClInclude Include="src\GifMaker.h" />
-    <ClInclude Include="src\VideoParcer.h" />
+    <ClInclude Include="src\VideoParser.h" />
     <ClInclude Include="src\ToGifConvertor.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

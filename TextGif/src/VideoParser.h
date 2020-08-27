@@ -10,14 +10,19 @@ extern "C" {
 
 #include "Deleters.h"
 
-class VideoParcer{
+class VideoParser{
 public:
-	VideoParcer(std::string file);
+	VideoParser(std::string file);
 
-	std::shared_ptr<AVFrame> GetFrame();
+	std::unique_ptr<AVFrame, FrameDeleter> GetFrame();
+
 	const AVCodecContext* const GetContext() const;
+	const int GetFramerate() const;
+
+	~VideoParser() = default;
 private:
 	int FindVideoStream();
+	void InitFormatContext();
 
 private:
 	std::string filename;
@@ -26,10 +31,8 @@ private:
 	std::unique_ptr<AVCodecContext, CodecContextDeleter> codecContext;
 
 	std::unique_ptr<AVPacket, PacketDeleter> packet;
-	std::shared_ptr<AVFrame> frame;
 
 	std::unique_ptr<AVFormatContext, FormatContextDeleter> formatContext;
-
 
 	int VideoStreamIndex;
 

@@ -2,16 +2,20 @@
 
 
 ToGifConvertor::ToGifConvertor(std::string inputFilename, std::string outputFilename)
-	:parcer(new VideoParcer(inputFilename)), builder(new GifMaker(outputFilename, parcer->GetContext())){}
+	:parser(new VideoParser(inputFilename)), builder(new GifMaker(outputFilename, parser->GetContext(), parser->GetFramerate())){}
 
 void ToGifConvertor::Convert(){
 
-	std::shared_ptr<AVFrame> frame = parcer->GetFrame();
+	auto fr = parser->GetFrame();
+	std::unique_ptr<AVFrame, FrameDeleter> frame;
+	frame.swap(fr);
 
 	while (frame) {
 
-		builder->AddFrame(frame);
-		frame = parcer->GetFrame();
+		builder->AddFrame(std::move(frame));
+
+		auto fr = parser->GetFrame();
+		frame.swap(fr);
 	} 
 
 	builder->CloseWriteing();

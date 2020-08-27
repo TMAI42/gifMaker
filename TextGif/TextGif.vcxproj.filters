@@ -24,10 +24,10 @@
     <ClCompile Include="src\RawWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\VideoParcer.cpp">
+    <ClCompile Include="src\ToGifConvertor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ToGifConvertor.cpp">
+    <ClCompile Include="src\VideoParser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -41,10 +41,10 @@
     <ClInclude Include="src\Deleters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\VideoParcer.h">
+    <ClInclude Include="src\ToGifConvertor.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\ToGifConvertor.h">
+    <ClInclude Include="src\VideoParser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
