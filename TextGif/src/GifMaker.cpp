@@ -7,44 +7,18 @@ extern "C" {
 #include <libavutil/pixdesc.h>
 }
 
+#include <limits>
+
 
 GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat inputPixelFormat, int bitrate, int framerate)
-	:outFormatContext(nullptr), codec(nullptr), frameCount(1) {
-
-	av_register_all();
+	:outFormatContext(nullptr, StreamCloser()), codec(nullptr), frameCount(1), pts(std::numeric_limits<int64_t>::min()) {
 
 	/* allocate the output media context */
-	avformat_alloc_output_context2(&outFormatContext, NULL, NULL, filename.c_str());
+	InitOutFormatContext(filename);
 
-	if (!outFormatContext)
-		avformat_alloc_output_context2(&outFormatContext, NULL, "gif", filename.c_str());
-
-	if (!outFormatContext)
-		throw std::exception("problems with context");
-
-	outputFormat = outFormatContext->oformat;
-
-	/* Add the audio and video streams using the default format codecs
+	/* Add the video streams using the default format codecs
 	 * and initialize the codecs. */
-	if (outputFormat->video_codec != AV_CODEC_ID_NONE) {
-		/* find the video encoder */
-		codec = avcodec_find_encoder(outputFormat->video_codec);
-
-		if (!codec)
-			throw std::exception("problems with codec");
-
-		videoStream = avformat_new_stream(outFormatContext, codec);
-		if (!videoStream)
-			throw std::exception("problems with video stream");
-
-		videoStream->id = outFormatContext->nb_streams - 1;
-		videoStream->time_base = { 1,framerate };
-		outCodecContext = videoStream->codec;
-
-		/* Some formats want stream headers to be separate. */
-		if (outFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
-			outCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-	}
+	InitCodecAndVideoStream(framerate);
 
 	/* Now that all the parameters are set, we can open the audio and
 	 * video codecs and allocate the necessary encode buffers.
@@ -62,7 +36,6 @@ GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat in
 	outCodecContext->pix_fmt = AV_PIX_FMT_RGB8;
 	//c->gop_size = 10; // emit one intra frame every ten frames
 	//c->max_b_frames=1;
-	//
 
 	int ret = 0;
 
@@ -79,17 +52,16 @@ GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat in
 
 
 #ifdef _DEBUG
-	av_dump_format(outFormatContext, 0, filename.c_str(), 1);
+	av_dump_format(outFormatContext.get(), 0, filename.c_str(), 1);
 #endif 
 
 	/* open the output file, if needed */
-
 	if (!(outputFormat->flags & AVFMT_NOFILE))
 		if ((ret = avio_open(&outFormatContext->pb, filename.c_str(), AVIO_FLAG_WRITE)) < 0)
 			throw std::exception("Could not open file");
 
 	/* Write the stream header, if any. */
-	ret = avformat_write_header(outFormatContext, NULL);
+	ret = avformat_write_header(outFormatContext.get(), NULL);
 	if (ret < 0)
 		throw std::exception("Error occurred when opening output file");
 
@@ -105,19 +77,73 @@ GifMaker::GifMaker(std::string filename,const AVCodecContext* inputcodcecContext
 	GifMaker(filename, inputcodcecContext->width, inputcodcecContext->height, inputcodcecContext->pix_fmt,
 	static_cast<int>(inputcodcecContext->bit_rate), farmerate){}
 
+void GifMaker::InitOutFormatContext(std::string filename) {
+
+	AVFormatContext* fmt_cxt {nullptr};
+
+	avformat_alloc_output_context2(&fmt_cxt, NULL, NULL, filename.c_str());
+
+	if (!fmt_cxt)
+		avformat_alloc_output_context2(&fmt_cxt, NULL, "gif", filename.c_str());
+
+	if (!fmt_cxt)
+		throw std::exception("problems with context");
+
+	outFormatContext.reset(fmt_cxt);
+
+	outputFormat = outFormatContext->oformat;
+
+}
+
+void GifMaker::InitCodecAndVideoStream(int framerate){
+
+	if (outputFormat->video_codec != AV_CODEC_ID_NONE) {
+		/* find the video encoder */
+		codec = avcodec_find_encoder(outputFormat->video_codec);
+
+		if (!codec)
+			throw std::exception("problems with codec");
+
+		videoStream = avformat_new_stream(outFormatContext.get(), codec);
+		if (!videoStream)
+			throw std::exception("problems with video stream");
+
+		videoStream->id = outFormatContext->nb_streams - 1;
+		videoStream->time_base = { 1,framerate };
+		outCodecContext = videoStream->codec;
+
+		/* Some formats want stream headers to be separate. */
+		if (outFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
+			outCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+	}
+}
 
 void GifMaker::InitSize(int width, int height) {
-	
+
+	// resolution must be a multiple of two
+
 	if (width >= 300 || height >= 300) {
 		int k = (width > height) ? width : height;
 
-		outCodecContext->width = width * 300 / k;
-		outCodecContext->height = height * 300 / k;
+		int nWidth = width * 300 / k;
+		int nHeight = height * 300 / k;
+
+		if (nWidth % 2)
+			nWidth--;
+
+		if (nHeight % 2)
+			nHeight--;
+
+		outCodecContext->width = nWidth;
+		outCodecContext->height = nHeight;
+
+	}
+	else {
+		
+		outCodecContext->width = width;
+		outCodecContext->height = height;
 	}
 
-	// resolution must be a multiple of two
-	outCodecContext->width = width;
-	outCodecContext->height = height;
 }
 
 int GifMaker::InitFrames(int width, int height, AVPixelFormat inputPixelFormat) {
@@ -168,29 +194,6 @@ int GifMaker::InitFrames(int width, int height, AVPixelFormat inputPixelFormat) 
 	pictureYUV420P->height = height;
 	pictureYUV420P->width = width;
 
-
-	/*Aditional frame for scaling*/ 
-	{
-	std::unique_ptr<AVFrame, FrameDeleter> pictureTmp3{ av_frame_alloc(), FrameDeleter() };
-	pictureRGB8.swap(pictureTmp3);
-	}
-
-	pictureRGB8->format = AV_PIX_FMT_RGB8;
-
-	if ((av_image_alloc(pictureRGB8->data, pictureRGB8->linesize,
-		width, height, (AVPixelFormat)pictureInput->format, 32)) < 0)
-		throw std::exception("can not allocate temp frame");
-
-
-#ifdef _DEBUG
-	else
-		printf("allocated picture of size %d (ptr %x), linesize %d %d %d %d\n", 0, pictureRGB8->data[0],
-			pictureRGB8->linesize[0], pictureRGB8->linesize[1], pictureRGB8->linesize[2], pictureRGB8->linesize[3]);
-#endif 
-
-	pictureRGB8->height = height;
-	pictureRGB8->width = width;
-
 	return size;
 }
 
@@ -203,13 +206,8 @@ void GifMaker::InitPixelConvertionContext(int width, int height) {
 
 	/* get sws context for YUV420P->RGB8 conversion */
 	swsContextToRGB8 = sws_getContext(width, height, AV_PIX_FMT_YUV420P,
-		width, height, AV_PIX_FMT_RGB8,
-		SWS_BILINEAR, NULL, NULL, NULL);
-
-	/*get sws context for scale*/
-	swsContextScaler = sws_getContext(width, height, AV_PIX_FMT_RGB8,
 		outCodecContext->width, outCodecContext->height, AV_PIX_FMT_RGB8,
-		SWS_SPLINE, NULL, NULL, NULL);
+		SWS_BILINEAR, NULL, NULL, NULL);
 
 	if (!swsContextToYUV420P || !swsContextToRGB8) 
 		throw std::exception("Could not initialize the conversion context");
@@ -224,6 +222,7 @@ void GifMaker::AddFrame(std::unique_ptr<AVFrame, FrameDeleter> frame) {
 	picture->data[0] = nullptr;
 	picture->linesize[0] = -1;
 	picture->format = outCodecContext->pix_fmt;
+	picture->pts = pts;
 
 	if (av_image_alloc(picture->data, picture->linesize, outCodecContext->width, outCodecContext->height, (AVPixelFormat)picture->format, 32) < 0) 
 		throw std::exception("error allocating with frames");
@@ -235,8 +234,8 @@ void GifMaker::AddFrame(std::unique_ptr<AVFrame, FrameDeleter> frame) {
 			picture->linesize[0], picture->linesize[1], picture->linesize[2], picture->linesize[3]);
 #endif
 
-	picture->height = frame->height;
-	picture->width = frame->width;
+	picture->height = outCodecContext->height;
+	picture->width = outCodecContext->width;
 
 	/* convert input to YUV420P*/
 	sws_scale(swsContextToYUV420P,
@@ -246,19 +245,11 @@ void GifMaker::AddFrame(std::unique_ptr<AVFrame, FrameDeleter> frame) {
 		pictureYUV420P->data,
 		pictureYUV420P->linesize);
 
-	/* convert YUV420P to RGB8*/
+	/* convert YUV420P to RGB8 and scaling*/
 	sws_scale(swsContextToRGB8,
 		pictureYUV420P->data,
 		pictureYUV420P->linesize,
 		0, frame->height,
-		pictureRGB8->data,
-		pictureRGB8->linesize);
-	
-	/*scaling*/
-	sws_scale(swsContextToRGB8,
-		pictureRGB8->data,
-		pictureRGB8->linesize,
-		0, outCodecContext->height,
 		picture->data,
 		picture->linesize);
 
@@ -277,26 +268,23 @@ void GifMaker::AddFrame(std::unique_ptr<AVFrame, FrameDeleter> frame) {
 	if (!ret && got_packet && pkt.size) {
 		pkt.stream_index = videoStream->index;
 		/* Write the compressed frame to the media file. */
-		ret = av_interleaved_write_frame(outFormatContext, &pkt);
+		ret = av_interleaved_write_frame(outFormatContext.get(), &pkt);
 	}
-
-	picture->pts += av_rescale_q(1, videoStream->codec->time_base, videoStream->time_base);
+	
+	pts += av_rescale_q(1, videoStream->codec->time_base, videoStream->time_base);
 	frameCount++;
 
 }
 
 void GifMaker::CloseWriteing() {
-	av_write_trailer(outFormatContext);
+	av_write_trailer(outFormatContext.get());
 	/* Close each codec. */
 
 	avcodec_close(videoStream->codec);
 
+	/* Close the output file. */
 	if (!(outputFormat->flags & AVFMT_NOFILE))
-		/* Close the output file. */
 		avio_close(outFormatContext->pb);
-
-	/* free the stream */
-	avformat_free_context(outFormatContext);
 
 	frameCount = 0;
 }

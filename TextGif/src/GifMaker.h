@@ -23,26 +23,25 @@ public:
 
     ~GifMaker() = default;
 private:
+    void InitOutFormatContext(std::string filename);
+    void InitCodecAndVideoStream(int framerate);
+    void InitSize(int width, int height);
     int InitFrames(int width, int height, AVPixelFormat inputPixelFormat);
     void InitPixelConvertionContext(int width, int height);
-
-    void InitSize(int width, int height);
 
 private:
     AVCodec* codec;
     int size, frameCount;
+    int64_t pts;
 
     std::unique_ptr<AVFrame, FrameDeleter> pictureInput;
     std::unique_ptr<AVFrame, FrameDeleter> pictureYUV420P;
-    std::unique_ptr<AVFrame, FrameDeleter> pictureRGB8;
-
 
     SwsContext* swsContextToYUV420P;
     SwsContext* swsContextToRGB8;
-    SwsContext* swsContextScaler;
 
     AVOutputFormat* outputFormat;
-    AVFormatContext* outFormatContext;
+    std::unique_ptr<AVFormatContext, StreamCloser> outFormatContext;
     AVStream* videoStream;
     AVCodecContext* outCodecContext;
 

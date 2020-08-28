@@ -17,8 +17,18 @@ struct FrameDeleter{
 struct FormatContextDeleter {
 
     void operator()(AVFormatContext* formatContext) {
-        if(formatContext)
+        if (formatContext) {
             avformat_close_input(&formatContext);
+        }
+    }
+};
+
+struct StreamCloser {
+
+    void operator()(AVFormatContext* formatContext) {
+        if (formatContext) {
+            avformat_free_context(formatContext);
+        }
     }
 };
 
