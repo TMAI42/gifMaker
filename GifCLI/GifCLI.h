@@ -5,7 +5,7 @@ namespace GifCLI {
 
 	public ref class ConvertorExternal : System::IDisposable {
 	public:
-		ConvertorExternal(System::String^ input, System::String^ output);
+		ConvertorExternal(System::String^ input, System::String^ output, int scale, int slope);
 
 		void ToConvert();
 

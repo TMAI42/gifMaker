@@ -20,21 +20,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ConvertorFactory.h" />
-    <ClInclude Include="src\Convertor.h" />
-    <ClInclude Include="src\Deleters.h" />
-    <ClInclude Include="src\GifMaker.h" />
-    <ClInclude Include="src\Maker.h" />
-    <ClInclude Include="src\Parser.h" />
-    <ClInclude Include="src\RawWriter.h" />
-    <ClInclude Include="src\ToGifConvertor.h" />
-    <ClInclude Include="src\VideoParser.h" />
+    <ClInclude Include="src\Convertor\Convertor.h" />
+    <ClInclude Include="src\Deleters\Deleters.h" />
+    <ClInclude Include="src\maker\GIfMaker\GifMaker.h" />
+    <ClInclude Include="src\maker\Maker.h" />
+    <ClInclude Include="src\parser\Parser.h" />
+    <ClInclude Include="src\writer\RawWriter.h" />
+    <ClInclude Include="src\Convertor\ToGifConvertor\ToGifConvertor.h" />
+    <ClInclude Include="src\parser\VideoParser\VideoParser.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\ConvertorFactory.cpp" />
-    <ClCompile Include="src\GifMaker.cpp" />
-    <ClCompile Include="src\RawWriter.cpp" />
-    <ClCompile Include="src\ToGifConvertor.cpp" />
-    <ClCompile Include="src\VideoParser.cpp" />
+    <ClCompile Include="src\maker\GIfMaker\GifMaker.cpp" />
+    <ClCompile Include="src\writer\RawWriter.cpp" />
+    <ClCompile Include="src\Convertor\ToGifConvertor\ToGifConvertor.cpp" />
+    <ClCompile Include="src\parser\VideoParser\VideoParser.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>

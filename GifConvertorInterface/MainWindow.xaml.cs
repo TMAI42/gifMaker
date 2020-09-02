@@ -35,11 +35,17 @@ namespace GifConvertorInterface
 
             output += "\\" + tmp +".gif";
 
-
-            using (var convertor = new ConvertorExternal(input, output))
+            try
             {
+            using (ConvertorExternal convertor = new ConvertorExternal(input, output)) {
                 convertor.ToConvert();
             }
+            }catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message, "", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            MessageBox.Show("Converted", "", MessageBoxButton.OK, MessageBoxImage.Information);
 
         }
 

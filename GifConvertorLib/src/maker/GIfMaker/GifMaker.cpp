@@ -10,7 +10,7 @@ extern "C" {
 #include <limits>
 
 
-GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat inputPixelFormat, int bitrate, int framerate)
+GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat inputPixelFormat, int scale, int bitrate, int framerate)
 	:outFormatContext(nullptr, StreamCloser()), codec(nullptr), frameCount(1), pts(std::numeric_limits<int64_t>::min()) {
 
 	/* allocate the output media context */
@@ -29,7 +29,7 @@ GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat in
 	outCodecContext->bit_rate = bitrate;
 
 	// resolution must be a multiple of two
-	InitSize(width, height);
+	InitSize(width, height, scale);
 
 	// frames per second
 	outCodecContext->time_base = { 1,framerate };
@@ -73,8 +73,8 @@ GifMaker::GifMaker(std::string filename, int width, int height, AVPixelFormat in
 
 }
 
-GifMaker::GifMaker(std::string filename,const AVCodecContext* inputcodcecContext, int farmerate):
-	GifMaker(filename, inputcodcecContext->width, inputcodcecContext->height, inputcodcecContext->pix_fmt,
+GifMaker::GifMaker(std::string filename,const AVCodecContext* inputcodcecContext, int farmerate, int scale):
+	GifMaker(filename, inputcodcecContext->width, inputcodcecContext->height, inputcodcecContext->pix_fmt, scale,
 	static_cast<int>(inputcodcecContext->bit_rate), farmerate){}
 
 void GifMaker::InitOutFormatContext(std::string filename) {
@@ -118,15 +118,15 @@ void GifMaker::InitCodecAndVideoStream(int framerate){
 	}
 }
 
-void GifMaker::InitSize(int width, int height) {
+void GifMaker::InitSize(int width, int height, int scale) {
 
 	// resolution must be a multiple of two
 
-	if (width >= 300 || height >= 300) {
-		int k = (width > height) ? width : height;
+	//if (width >= 300 || height >= 300) {
+	//	int k = (width > height) ? width : height;
 
-		int nWidth = width * 300 / k;
-		int nHeight = height * 300 / k;
+		int nWidth = width/scale;
+		int nHeight = height/scale;
 
 		if (nWidth % 2)
 			nWidth--;
@@ -137,12 +137,12 @@ void GifMaker::InitSize(int width, int height) {
 		outCodecContext->width = nWidth;
 		outCodecContext->height = nHeight;
 
-	}
-	else {
-		
-		outCodecContext->width = width;
-		outCodecContext->height = height;
-	}
+	//}
+	//else {
+	//	
+	//	outCodecContext->width = width;
+	//	outCodecContext->height = height;
+	//}
 
 }
 
